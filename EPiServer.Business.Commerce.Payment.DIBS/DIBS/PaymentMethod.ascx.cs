@@ -13,8 +13,8 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
     ///	Implements User interface for generic gateway
     /// </summary>
     public partial class PaymentMethod : BaseStoreUserControl, IPaymentOption
-    {  
-        
+    {
+
         /// <summary>
         /// Handles the Load event of the Page control.
         /// </summary>
@@ -22,8 +22,7 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void Page_Load(object sender, System.EventArgs e)
         {
-            if (Request.Form["paymentprovider"] != null 
-                && Request.Form["paymentprovider"].Equals(DIBSPayment.DIBSSystemName))
+            if (Request.Form["paymentprovider"] != null && Request.Form["paymentprovider"].Equals(DIBSPayment.DIBSSystemName))
             {
                 ErrorManager.GenerateError(CancelledMessage);
             }
@@ -31,9 +30,9 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
             if (!IsPostBack)
             {
                 PaymentMethodDto dibs = PaymentManager.GetPaymentMethodBySystemName(DIBSPayment.DIBSSystemName, SiteContext.Current.LanguageName);
-                string processingUrl = DIBSPaymentGateway.GetParameterByName(dibs, DIBSPaymentGateway.ProcessingUrl).Value;
-                string MD5K1 = DIBSPaymentGateway.GetParameterByName(dibs, DIBSPaymentGateway.MD5Key1).Value;
-                string MD5K2 = DIBSPaymentGateway.GetParameterByName(dibs, DIBSPaymentGateway.MD5Key2).Value;
+                string processingUrl = Utilities.GetParameterByName(dibs, DIBSPaymentGateway.ProcessingUrl).Value;
+                string MD5K1 = Utilities.GetParameterByName(dibs, Utilities.MD5Key1).Value;
+                string MD5K2 = Utilities.GetParameterByName(dibs, Utilities.MD5Key2).Value;
 
                 if (string.IsNullOrEmpty(processingUrl) || string.IsNullOrEmpty(MD5K1) || string.IsNullOrEmpty(MD5K2))
                 {
@@ -41,8 +40,6 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
                 }
             }
         }
-
-        #region IPaymentOption Members
 
         /// <summary>
         /// Validates input data for the control. In case of Credit card pre authentication will be the best way to
@@ -59,10 +56,9 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
         /// and validate the credit card or other parameters accepted.
         /// </summary>
         /// <param name="form"></param>
-        /// <returns>bool</returns>
         public Payment PreProcess(OrderForm form)
         {
-            OtherPayment otherPayment = new OtherPayment {TransactionType = TransactionType.Authorization.ToString()};
+            OtherPayment otherPayment = new OtherPayment { TransactionType = TransactionType.Authorization.ToString() };
             return (Payment)otherPayment;
         }
 
@@ -77,7 +73,6 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
             return true;
         }
 
-
         /// <summary>
         /// Gets the message when payment is cancelled or declined.
         /// </summary>
@@ -89,7 +84,6 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
                 return LocalizationService.GetString("/Commerce/Checkout/DIBS/Cancelled");
             }
         }
-        #endregion
 
         private static LocalizationService LocalizationService
         {

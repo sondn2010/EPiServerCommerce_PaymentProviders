@@ -1,4 +1,4 @@
-﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="DIBSPayment.aspx.cs" Inherits="EPiServer.Business.Commerce.Payment.DIBS.DIBSPayment" %>
+﻿﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="DIBSPayment.aspx.cs" Inherits="EPiServer.Business.Commerce.Payment.DIBS.DIBSPayment" %>
 
 <!DOCTYPE html>
 <html lang="en">

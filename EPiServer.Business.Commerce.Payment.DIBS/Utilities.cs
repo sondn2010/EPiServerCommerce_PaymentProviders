@@ -6,11 +6,16 @@ using Mediachase.Commerce;
 using Mediachase.Commerce.Catalog;
 using Mediachase.Commerce.Catalog.Managers;
 using Mediachase.Commerce.Catalog.Objects;
+using Mediachase.Commerce.Core;
 using Mediachase.Commerce.Orders;
+using Mediachase.Commerce.Orders.Dto;
+using Mediachase.Commerce.Orders.Managers;
 using Mediachase.Commerce.Website;
 using Mediachase.Commerce.Website.Helpers;
 using System;
 using System.Collections;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Web;
 
@@ -20,6 +25,8 @@ namespace EPiServer.Business.Commerce.Payment
     {
         private const string CurrentCartKey = "CurrentCart";
         private const string CurrentContextKey = "CurrentContext";
+        public const string MD5Key1 = "MD5Key1";
+        public const string MD5Key2 = "MD5Key2";
 
         // Refer to: http://tech.dibspayment.com/D2/Toolbox/Currency_codes
         public const string DKK = "208";
@@ -46,8 +53,8 @@ namespace EPiServer.Business.Commerce.Payment
         {
             Entry entry = CatalogContext.Current.GetCatalogEntry(item.Code, new CatalogEntryResponseGroup(CatalogEntryResponseGroup.ResponseGroup.CatalogEntryInfo));
             // if the entry is null (product is deleted), return item display name
-            return (entry != null) ? 
-                        StoreHelper.GetEntryDisplayName(entry).StripPreviewText(maxSize <= 0 ? 100 : maxSize) : 
+            return (entry != null) ?
+                        StoreHelper.GetEntryDisplayName(entry).StripPreviewText(maxSize <= 0 ? 100 : maxSize) :
                         item.DisplayName.StripPreviewText(maxSize <= 0 ? 100 : maxSize);
         }
 
@@ -59,13 +66,13 @@ namespace EPiServer.Business.Commerce.Payment
         {
             if (po != null)
             {
-                foreach (ILineItem item in po.GetAllLineItems())
+                foreach (ILineItem lineitem in po.GetAllLineItems())
                 {
-                    item.DisplayName = item.GetDisplayNameOfCurrentLanguage(100);
+                    lineitem.DisplayName = lineitem.GetDisplayNameOfCurrentLanguage(100);
                 }
             }
         }
-        
+
         /// <summary>
         /// Uses parameterized thread to update the cart instance id otherwise will get an "workflow already existed" exception.
         /// Passes the cart and the current HttpContext as parameter in call back function to be able to update the instance id and also can update the HttpContext.Current if needed.
@@ -252,6 +259,107 @@ namespace EPiServer.Business.Commerce.Payment
             else if (currency.Equals(Currency.USD))
                 return USD;
             return string.Empty;
+        }
+
+        /// <summary>
+        /// Gets the Md5 key refund.
+        /// </summary>
+        /// <param name="merchant">The merchant.</param>
+        /// <param name="orderId">The order id.</param>
+        /// <param name="transact">The transact.</param>
+        /// <param name="amount">The amount.</param>
+        /// <returns></returns>
+        internal static string GetMD5KeyRefund(string merchant, string orderId, string transact, string amount)
+        {
+            string hashString = string.Format("merchant={0}&orderid={1}&transact={2}&amount={3}",
+                                                merchant,
+                                                orderId,
+                                                transact,
+                                                amount);
+            return GetMD5Key(hashString);
+        }
+
+        /// <summary>
+        /// Gets the MD5 key used to send to DIBS in authorization step.
+        /// </summary>
+        /// <param name="merchant">The merchant.</param>
+        /// <param name="orderId">The order id.</param>
+        /// <param name="currency">The currency.</param>
+        /// <param name="amount">The amount.</param>
+        /// <returns></returns>
+        internal static string GetMD5Key(string merchant, string orderId, Currency currency, string amount)
+        {
+            string hashString = string.Format("merchant={0}&orderid={1}&currency={2}&amount={3}",
+                                                merchant,
+                                                orderId,
+                                                currency.CurrencyCode,
+                                                amount);
+            return GetMD5Key(hashString);
+        }
+
+        /// <summary>
+        /// Gets the key used to verify response from DIBS when payment is approved.
+        /// </summary>
+        /// <param name="transact">The transact.</param>
+        /// <param name="amount">The amount.</param>
+        /// <param name="currency">The currency.</param>
+        /// <returns></returns>
+        internal static string GetMD5Key(string transact, string amount, Currency currency)
+        {
+            string hashString = string.Format("transact={0}&amount={1}&currency={2}",
+                                                transact,
+                                                amount,
+                                                Utilities.GetCurrencyCode(currency));
+            return GetMD5Key(hashString);
+        }
+
+        internal static string GetMD5Key(string hashString)
+        {
+            PaymentMethodDto dibs = PaymentManager.GetPaymentMethodBySystemName("DIBS", SiteContext.Current.LanguageName);
+            string key1 = Utilities.GetParameterByName(dibs, MD5Key1).Value;
+            string key2 = Utilities.GetParameterByName(dibs, MD5Key2).Value;
+
+            MD5CryptoServiceProvider x = new MD5CryptoServiceProvider();
+            byte[] bs = System.Text.Encoding.UTF8.GetBytes(key1 + hashString);
+            bs = x.ComputeHash(bs);
+            StringBuilder s = new StringBuilder();
+            foreach (byte b in bs)
+            {
+                s.Append(b.ToString("x2").ToLower());
+            }
+            string firstHash = s.ToString();
+
+            string secondHashString = key2 + firstHash;
+            byte[] bs2 = System.Text.Encoding.UTF8.GetBytes(secondHashString);
+            bs2 = x.ComputeHash(bs2);
+            StringBuilder s2 = new StringBuilder();
+            foreach (byte b in bs2)
+            {
+                s2.Append(b.ToString("x2").ToLower());
+            }
+            string secondHash = s2.ToString();
+            return secondHash;
+        }
+
+        private static object GetParameterByName(PaymentMethodDto dibs, object mD5Key1)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Gets the parameter by name.
+        /// </summary>
+        /// <param name="paymentMethodDto">The payment method dto.</param>
+        /// <param name="name">The name.</param>
+        /// <returns></returns>
+        internal static PaymentMethodDto.PaymentMethodParameterRow GetParameterByName(PaymentMethodDto paymentMethodDto, string name)
+        {
+            PaymentMethodDto.PaymentMethodParameterRow[] rowArray = (PaymentMethodDto.PaymentMethodParameterRow[])paymentMethodDto.PaymentMethodParameter.Select(string.Format("Parameter = '{0}'", name));
+            if ((rowArray != null) && (rowArray.Length > 0))
+            {
+                return rowArray[0];
+            }
+            throw new ArgumentNullException("Parameter named " + name + " for DIBS payment cannot be null");
         }
     }
 }

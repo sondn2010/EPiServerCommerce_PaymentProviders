@@ -21,8 +21,9 @@ using System.Web;
 
 namespace EPiServer.Business.Commerce.Payment.DIBS
 {
+    // TODO change to the appropriate path of the template.
     [TemplateDescriptor(Path = "~/Features/Payment/DIBSPayment.aspx")]
-    public partial class DIBSPayment : EPiServer.TemplatePage<DIBSPaymentPage>
+    public partial class DIBSPayment : TemplatePage<DIBSPaymentPage>
     {
         private ICart _currentCart = null;
         private readonly Injected<IOrderRepository> _orderRepository;
@@ -33,7 +34,13 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
         public const string SessionLatestOrderNumberKey = "LatestOrderNumber";
         public const string SessionLatestOrderTotalKey = "LatestOrderTotal";
         public const string DIBSSystemName = "DIBS";
-        
+
+        private IPayment payment;
+        private string _acceptUrl;
+        private string _cancelUrl;
+        private string _callbackUrl;
+        private string _orderNumber;
+
         private ICart CurrentCart
         {
             get
@@ -46,12 +53,6 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
                 return _currentCart;
             }
         }
-
-        private IPayment payment;
-        private string _acceptUrl;
-        private string _cancelUrl;
-        private string _callbackUrl;
-        private string _orderNumber;
 
         /// <summary>
         /// Raises the <see cref="E:System.Web.UI.Control.Load"/> event.
@@ -73,9 +74,9 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
                 return;
             }
 
-            string processingUrl = DIBSPaymentGateway.GetParameterByName(dibsPaymentMethod, DIBSPaymentGateway.ProcessingUrl).Value;
-            string MD5K1 = DIBSPaymentGateway.GetParameterByName(dibsPaymentMethod, DIBSPaymentGateway.MD5Key1).Value;
-            string MD5K2 = DIBSPaymentGateway.GetParameterByName(dibsPaymentMethod, DIBSPaymentGateway.MD5Key2).Value;
+            string processingUrl = Utilities.GetParameterByName(dibsPaymentMethod, DIBSPaymentGateway.ProcessingUrl).Value;
+            string MD5K1 = Utilities.GetParameterByName(dibsPaymentMethod, Utilities.MD5Key1).Value;
+            string MD5K2 = Utilities.GetParameterByName(dibsPaymentMethod, Utilities.MD5Key2).Value;
 
             // Get DIBSPaymentLanding url
             if (!Request.IsAuthenticated)
@@ -93,8 +94,8 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
             //In case the user cancels the payment, he'll be redirected back to checkout page.
             //We need to set cancel url to post form.
             cancelurl.Value = _cancelUrl;
-            
-            paymentForm.Action = processingUrl;            
+
+            paymentForm.Action = processingUrl;
 
             Response.Cache.SetCacheability(HttpCacheability.NoCache);
             Response.Cache.SetExpires(DateTime.Now.AddSeconds(-1));
@@ -108,7 +109,7 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
                 && Request.Form["orderid"] != null && Request.Form["transact"] != null)
             {
                 _orderNumber = Request["orderid"];
-                string myHash = DIBSPaymentGateway.GetMD5Key(Request.Form["transact"], Request.Form["amount"],
+                string myHash = Utilities.GetMD5Key(Request.Form["transact"], Request.Form["amount"],
                                                 new Currency(Request.Form["currency"]));
                 if (myHash.Equals(Request.Form["authkey"]))
                 {
@@ -120,25 +121,25 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
                 && Request.Form["amount"] != null && Request.Form["currency"] != null &&
                 Request.Form["md5key"] != null)
             {
-                string myHash = DIBSPaymentGateway.GetMD5Key(Request.Form["merchant"], Request.Form["orderid"],
+                string myHash = Utilities.GetMD5Key(Request.Form["merchant"], Request.Form["orderid"],
                                                 new Currency(Request.Form["currency"]), Request.Form["amount"]);
                 if (myHash.Equals(Request.Form["md5key"]))
                 {
                     ProcessUnsuccessfulTransaction(string.Empty);
                 }
             }
-            
+
             if (payment == null)
             {
                 Response.Redirect(_cancelUrl);
-            }                
+            }
             else if (payment != null)
             {
                 // process request from Checkout
                 _orderNumber = GenerateOrderNumber(CurrentCart);
             }
 
-            Page.ClientScript.RegisterClientScriptBlock(typeof(DIBSPayment), "submitScript", "window.onload = function (evt) { document.forms[0].submit(); }", true);
+            //Page.ClientScript.RegisterClientScriptBlock(typeof(DIBSPayment), "submitScript", "window.onload = function (evt) { document.forms[0].submit(); }", true);
             base.OnLoad(e);
         }
 
@@ -157,7 +158,7 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
                 using (TransactionScope scope = new TransactionScope())
                 {
                     cart.OrderStatus = OrderStatus.InProgress;
-                    
+
                     // Change status of payments to processed.
                     // It must be done before execute workflow to ensure payments which should mark as processed.
                     // To avoid get errors when executed workflow.
@@ -173,18 +174,18 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
                     else
                     {
                         OrderGroupWorkflowManager.RunWorkflow((OrderGroup)cart, OrderGroupWorkflowManager.CartCheckOutWorkflowName, true, isIgnoreProcessPayment);
-                    }                    
-                    
+                    }
+
                     //Save the transact from DIBS to payment.
                     payment.TransactionID = Request["transact"];
 
                     // Save changes
                     //cart.OrderNumberMethod = new Cart.CreateOrderNumber((c) => _orderNumber);
                     //this might cause problem when checkout using multiple shipping address because ECF workflow does not handle it. Modify the workflow instead of modify in this payment
-                    
+
                     var poLink = _orderRepository.Service.SaveAsPurchaseOrder(cart);
                     purchaseOrder = _orderRepository.Service.Load(poLink) as IPurchaseOrder;
-                    ((PurchaseOrder) purchaseOrder).Status = DIBSPaymentGateway.PaymentCompleted;
+                    ((PurchaseOrder)purchaseOrder).Status = DIBSPaymentGateway.PaymentCompleted;
 
                     purchaseOrder.OrderNumber = _orderNumber;
 
@@ -195,7 +196,7 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
                     }
 
                     AddNoteToPurchaseOrder("New order placed by {0} in {1}", purchaseOrder, PrincipalInfo.CurrentPrincipal.Identity.Name, "Public site");
-                    
+
                     // Update display name of product by current language
                     purchaseOrder.UpdateDisplayNameWithCurrentLanguage();
                     _orderRepository.Service.Save(purchaseOrder);
@@ -253,7 +254,7 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
         {
             get
             {
-                return DIBSPaymentGateway.GetMD5Key(MerchantID, OrderID, Currency, Amount);
+                return Utilities.GetMD5Key(MerchantID, OrderID, Currency, Amount);
             }
         }
 
@@ -277,7 +278,7 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
             get
             {
                 PaymentMethodDto dibs = PaymentManager.GetPaymentMethodBySystemName("DIBS", SiteContext.Current.LanguageName);
-                return DIBSPaymentGateway.GetParameterByName(dibs, DIBSPaymentGateway.UserParameter).Value;
+                return Utilities.GetParameterByName(dibs, DIBSPaymentGateway.UserParameter).Value;
             }
         }
 
@@ -309,7 +310,7 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
                     SiteContext.Current.Currency : CurrentCart.Currency;
             }
         }
-        
+
         /// <summary>
         /// Gets the order ID.
         /// </summary>
@@ -375,7 +376,7 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
             }
         }
 
-        public static IDictionary<ILineItem, List<ValidationIssue>> AddValidationIssues(ILineItem lineItem, ValidationIssue issue)
+        private static IDictionary<ILineItem, List<ValidationIssue>> AddValidationIssues(ILineItem lineItem, ValidationIssue issue)
         {
             var issues = new Dictionary<ILineItem, List<ValidationIssue>>();
             if (!issues.ContainsKey(lineItem))

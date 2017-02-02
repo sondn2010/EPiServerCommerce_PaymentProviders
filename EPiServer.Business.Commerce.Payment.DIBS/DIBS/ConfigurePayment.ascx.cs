@@ -7,7 +7,6 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
 {
     public partial class ConfigurePayment : System.Web.UI.UserControl, IGatewayControl
     {
-        // Fields
         private PaymentMethodDto _paymentMethodDto;
         private string _validationGroup;
 
@@ -16,13 +15,13 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
         /// </summary>
         public ConfigurePayment()
         {
-            this._validationGroup = string.Empty;
-            this._paymentMethodDto = null;
+            _validationGroup = string.Empty;
+            _paymentMethodDto = null;
         }
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            this.BindData();
+            BindData();
         }
 
         /// <summary>
@@ -30,45 +29,41 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
         /// </summary>
         public void BindData()
         {
-            if ((this._paymentMethodDto != null) && (this._paymentMethodDto.PaymentMethodParameter != null))
+            if ((_paymentMethodDto != null) && (_paymentMethodDto.PaymentMethodParameter != null))
             {
                 PaymentMethodDto.PaymentMethodParameterRow parameterByName = null;
-                parameterByName = this.GetParameterByName(DIBSPaymentGateway.UserParameter);
+                parameterByName = GetParameterByName(DIBSPaymentGateway.UserParameter);
                 if (parameterByName != null)
                 {
-                    this.User.Text = parameterByName.Value;
+                    User.Text = parameterByName.Value;
                 }
-                parameterByName = this.GetParameterByName(DIBSPaymentGateway.PasswordParameter);
+                parameterByName = GetParameterByName(DIBSPaymentGateway.PasswordParameter);
                 if (parameterByName != null)
                 {
-                    this.Password.Text = parameterByName.Value;
+                    Password.Text = parameterByName.Value;
                 }
 
-                parameterByName = this.GetParameterByName(DIBSPaymentGateway.ProcessingUrl);
+                parameterByName = GetParameterByName(DIBSPaymentGateway.ProcessingUrl);
                 if (parameterByName != null)
                 {
-                    this.ProcessingUrl.Text = parameterByName.Value;
+                    ProcessingUrl.Text = parameterByName.Value;
                 }
-                parameterByName = this.GetParameterByName(DIBSPaymentGateway.MD5Key1);
+                parameterByName = GetParameterByName(Utilities.MD5Key1);
                 if (parameterByName != null)
                 {
-                    this.MD5key1.Text = parameterByName.Value;
+                    MD5key1.Text = parameterByName.Value;
                 }
-                parameterByName = this.GetParameterByName(DIBSPaymentGateway.MD5Key2);
+                parameterByName = GetParameterByName(Utilities.MD5Key2);
                 if (parameterByName != null)
                 {
-                    this.MD5key2.Text = parameterByName.Value;
+                    MD5key2.Text = parameterByName.Value;
                 }
             }
             else
             {
-                this.Visible = false;
+                Visible = false;
             }
         }
-
-
-
-        #region IGatewayControl Members
 
         /// <summary>
         /// Loads the object.
@@ -76,7 +71,7 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
         /// <param name="dto">The dto.</param>
         public void LoadObject(object dto)
         {
-            this._paymentMethodDto = dto as PaymentMethodDto;
+            _paymentMethodDto = dto as PaymentMethodDto;
         }
 
         /// <summary>
@@ -85,63 +80,63 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
         /// <param name="dto">The dto.</param>
         public void SaveChanges(object dto)
         {
-            if (this.Visible)
+            if (Visible)
             {
-                this._paymentMethodDto = dto as PaymentMethodDto;
-                if ((this._paymentMethodDto != null) && (this._paymentMethodDto.PaymentMethodParameter != null))
+                _paymentMethodDto = dto as PaymentMethodDto;
+                if ((_paymentMethodDto != null) && (_paymentMethodDto.PaymentMethodParameter != null))
                 {
                     Guid empty = Guid.Empty;
-                    if (this._paymentMethodDto.PaymentMethod.Count > 0)
+                    if (_paymentMethodDto.PaymentMethod.Count > 0)
                     {
-                        empty = this._paymentMethodDto.PaymentMethod[0].PaymentMethodId;
+                        empty = _paymentMethodDto.PaymentMethod[0].PaymentMethodId;
                     }
                     PaymentMethodDto.PaymentMethodParameterRow parameterByName = null;
-                    parameterByName = this.GetParameterByName(DIBSPaymentGateway.UserParameter);
+                    parameterByName = GetParameterByName(DIBSPaymentGateway.UserParameter);
                     if (parameterByName != null)
                     {
-                        parameterByName.Value = this.User.Text;
+                        parameterByName.Value = User.Text;
                     }
                     else
                     {
-                        this.CreateParameter(this._paymentMethodDto, DIBSPaymentGateway.UserParameter, this.User.Text, empty);
+                        CreateParameter(_paymentMethodDto, DIBSPaymentGateway.UserParameter, User.Text, empty);
                     }
 
-                    parameterByName = this.GetParameterByName(DIBSPaymentGateway.PasswordParameter);
+                    parameterByName = GetParameterByName(DIBSPaymentGateway.PasswordParameter);
                     if (parameterByName != null)
                     {
-                        parameterByName.Value = this.Password.Text;
+                        parameterByName.Value = Password.Text;
                     }
                     else
                     {
-                        this.CreateParameter(this._paymentMethodDto, DIBSPaymentGateway.PasswordParameter, this.Password.Text, empty);
+                        CreateParameter(_paymentMethodDto, DIBSPaymentGateway.PasswordParameter, Password.Text, empty);
                     }
 
-                    parameterByName = this.GetParameterByName(DIBSPaymentGateway.ProcessingUrl);
+                    parameterByName = GetParameterByName(DIBSPaymentGateway.ProcessingUrl);
                     if (parameterByName != null)
                     {
-                        parameterByName.Value = this.ProcessingUrl.Text;
+                        parameterByName.Value = ProcessingUrl.Text;
                     }
                     else
                     {
-                        this.CreateParameter(this._paymentMethodDto, DIBSPaymentGateway.ProcessingUrl, this.ProcessingUrl.Text, empty);
+                        CreateParameter(_paymentMethodDto, DIBSPaymentGateway.ProcessingUrl, ProcessingUrl.Text, empty);
                     }
-                    parameterByName = this.GetParameterByName(DIBSPaymentGateway.MD5Key1);
+                    parameterByName = GetParameterByName(Utilities.MD5Key1);
                     if (parameterByName != null)
                     {
-                        parameterByName.Value = this.MD5key1.Text;
+                        parameterByName.Value = MD5key1.Text;
                     }
                     else
                     {
-                        this.CreateParameter(this._paymentMethodDto, DIBSPaymentGateway.MD5Key1, this.MD5key1.Text, empty);
+                        CreateParameter(_paymentMethodDto, Utilities.MD5Key1, MD5key1.Text, empty);
                     }
-                    parameterByName = this.GetParameterByName(DIBSPaymentGateway.MD5Key2);
+                    parameterByName = GetParameterByName(Utilities.MD5Key2);
                     if (parameterByName != null)
                     {
-                        parameterByName.Value = this.MD5key2.Text;
+                        parameterByName.Value = MD5key2.Text;
                     }
                     else
                     {
-                        this.CreateParameter(this._paymentMethodDto, DIBSPaymentGateway.MD5Key2, this.MD5key2.Text, empty);
+                        CreateParameter(_paymentMethodDto, Utilities.MD5Key2, MD5key2.Text, empty);
                     }
                 }
             }
@@ -150,7 +145,7 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
 
         private PaymentMethodDto.PaymentMethodParameterRow GetParameterByName(string name)
         {
-            PaymentMethodDto.PaymentMethodParameterRow[] rowArray = (PaymentMethodDto.PaymentMethodParameterRow[])this._paymentMethodDto.PaymentMethodParameter.Select(string.Format("Parameter = '{0}'", name));
+            PaymentMethodDto.PaymentMethodParameterRow[] rowArray = (PaymentMethodDto.PaymentMethodParameterRow[])_paymentMethodDto.PaymentMethodParameter.Select(string.Format("Parameter = '{0}'", name));
             if ((rowArray != null) && (rowArray.Length > 0))
             {
                 return rowArray[0];
@@ -185,7 +180,5 @@ namespace EPiServer.Business.Commerce.Payment.DIBS
                 _validationGroup = value;
             }
         }
-
-        #endregion
     }
 }
